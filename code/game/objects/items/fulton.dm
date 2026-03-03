@@ -141,21 +141,55 @@ GLOBAL_LIST_EMPTY(deployed_fultons)
 	var/image/I = image(icon, icon_state)
 	var/image/cables = image('icons/obj/structures/droppod_32x64.dmi', attached_atom, "chute_cables_static")
 	var/image/chute = image('icons/obj/structures/droppod_64x64.dmi', attached_atom, "chute_static")
-	var/corr_x = (attached_atom.pixel_x * -1)//This fixes a pixel offset bug with big sprites
+	var/corr_x = (attached_atom.pixel_x * -1)
+	var/matrix/M = matrix()
+	var/angle = 0
+
+	// Based on your discovery: South (2) facing East is flipped, West is normal.
+	// This means South belongs in the group that defaults to -90.
+	switch(attached_atom.dir)
+		if(1, 5, 6, 7)
+			angle = 90
+		else
+			angle = -90
+
+	// THE TRANSFORM.A CHECK
+	// This is the "Maintainer's Secret." If a < 0, the mob is mirrored.
+	// This handles "South facing East" versus "South facing West" automatically.
+	if(attached_atom.transform.a < 0)
+		angle = (angle == 90) ? -90 : 90
+
+	M.Turn(angle)
+
 	I.pixel_x = corr_x
+	I.appearance_flags = 96 // RESET_DIRECTION | RESET_ALPHA | RESET_COLOR
+	I.transform = M
+
 	cables.pixel_x = corr_x
+	cables.appearance_flags = 96
+	cables.transform = M
+
 	chute.pixel_x = corr_x - 16
 	chute.pixel_y = 16
+	chute.appearance_flags = 96
+	chute.transform = M
+
 	icon_state = ""
+
 	attached_atom.overlays += list(cables, chute, I)
+
 	var/originalLayer = attached_atom.layer
 	var/originalAlpha = attached_atom.alpha
-	attached_atom.layer = 100 //You want this above everything else because it flies up into the sky
+	attached_atom.layer = 100
+
 	animate(attached_atom, pixel_y = 10, time = 30, easing = BOUNCE_EASING)
 	playsound(loc, 'sound/items/fulton.ogg', 50, 1)
+
 	sleep(30)
+
 	animate(attached_atom, pixel_y = 500, time = 50, alpha = 0, easing = CIRCULAR_EASING|EASE_OUT)
 	playsound(loc, 'sound/items/fulton_takeoff.ogg', 50, 1)
+
 	sleep(50)
 	original_location = get_turf(attached_atom)
 
