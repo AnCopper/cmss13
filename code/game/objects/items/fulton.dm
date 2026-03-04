@@ -144,9 +144,8 @@ GLOBAL_LIST_EMPTY(deployed_fultons)
 	var/image/chute = image('icons/obj/structures/droppod_64x64.dmi', attached_atom, "chute_static")
 	var/corr_x = (attached_atom.pixel_x * -1)
 	var/original_dir = attached_atom.dir
-
+	var/mob/living/L = attached_atom
 	if(ishuman(attached_atom))
-		var/mob/living/L = attached_atom
 		L.rotate_on_lying = FALSE
 		L.transform = matrix()
 		L.dir = SOUTH
@@ -200,23 +199,17 @@ GLOBAL_LIST_EMPTY(deployed_fultons)
 	GLOB.deployed_fultons += src
 
 	if(ishuman(attached_atom))
-		var/mob/living/L = attached_atom
 		L.rotate_on_lying = TRUE
 		L.dir = original_dir
-
-		// This is the missing piece:
-		// We need to tell the mob to look at its health/state and set the lying_angle again.
-		if(L.stat == DEAD || L.resting )
-			L.lying_angle = (L.dir == SOUTH || L.dir == WEST) ? 90 : 270
+		if(L.stat == DEAD)
+			L.lying_angle = 90
 
 		L.update_transform(TRUE)
 
-	attached_atom.overlays -= I
-	attached_atom.overlays -= cables
-	attached_atom.overlays -= chute
+	attached_atom.overlays -= list(I, cables, chute)
 	attached_atom.layer = originalLayer
 	attached_atom.alpha = originalAlpha
-	addtimer(CALLBACK(src, PROC_REF(return_fulton), original_location), 150 SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(return_fulton), original_location), 10 SECONDS)
 
 /obj/item/stack/fulton/proc/return_fulton(turf/return_turf)
 
