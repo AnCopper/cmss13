@@ -138,41 +138,28 @@ GLOBAL_LIST_EMPTY(deployed_fultons)
 /obj/item/stack/fulton/proc/deploy_fulton()
 	if(!attached_atom)
 		return
+
 	var/image/I = image(icon, icon_state)
 	var/image/cables = image('icons/obj/structures/droppod_32x64.dmi', attached_atom, "chute_cables_static")
 	var/image/chute = image('icons/obj/structures/droppod_64x64.dmi', attached_atom, "chute_static")
 	var/corr_x = (attached_atom.pixel_x * -1)
-	var/matrix/M = matrix()
-	var/angle = 0
+	var/original_dir = attached_atom.dir
 
-	// Based on your discovery: South (2) facing East is flipped, West is normal.
-	// This means South belongs in the group that defaults to -90.
-	switch(attached_atom.dir)
-		if(1, 5, 6, 7)
-			angle = 90
-		else
-			angle = -90
-
-	// THE TRANSFORM.A CHECK
-	// This is the "Maintainer's Secret." If a < 0, the mob is mirrored.
-	// This handles "South facing East" versus "South facing West" automatically.
-	if(attached_atom.transform.a < 0)
-		angle = (angle == 90) ? -90 : 90
-
-	M.Turn(angle)
+	if(ishuman(attached_atom))
+		var/mob/living/L = attached_atom
+		L.rotate_on_lying = FALSE
+		L.transform = matrix()
+		L.dir = SOUTH
 
 	I.pixel_x = corr_x
-	I.appearance_flags = 96 // RESET_DIRECTION | RESET_ALPHA | RESET_COLOR
-	I.transform = M
+	I.appearance_flags = 96
 
 	cables.pixel_x = corr_x
 	cables.appearance_flags = 96
-	cables.transform = M
 
 	chute.pixel_x = corr_x - 16
 	chute.pixel_y = 16
 	chute.appearance_flags = 96
-	chute.transform = M
 
 	icon_state = ""
 
@@ -211,6 +198,19 @@ GLOBAL_LIST_EMPTY(deployed_fultons)
 
 	forceMove(attached_atom)
 	GLOB.deployed_fultons += src
+
+	if(ishuman(attached_atom))
+		var/mob/living/L = attached_atom
+		L.rotate_on_lying = TRUE
+		L.dir = original_dir
+
+		// This is the missing piece:
+		// We need to tell the mob to look at its health/state and set the lying_angle again.
+		if(L.stat == DEAD || L.resting )
+			L.lying_angle = (L.dir == SOUTH || L.dir == WEST) ? 90 : 270
+
+		L.update_transform(TRUE)
+
 	attached_atom.overlays -= I
 	attached_atom.overlays -= cables
 	attached_atom.overlays -= chute
