@@ -1492,3 +1492,7 @@
 	hud_type = MOB_HUD_FACTION_PAP
 	additional_hud_types = list(MOB_HUD_FACTION_UPP)
 	volume = RADIO_VOLUME_IMPORTANT
+
+/obj/item/device/radio/headset/distress/ifm
+	name = "IFM comms headset"
+	desc = "A civilian-grade communications headset used by Independent Frontier Medics personnel."
