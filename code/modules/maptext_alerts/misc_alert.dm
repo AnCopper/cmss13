@@ -92,30 +92,9 @@
 	maptext_width = 400
 	image_to_play_offset_y = 0
 	maptext_y = 0
-	letters_per_update = 1
-	play_delay = 1.5
-	var/announcement_title
+	letters_per_update = 2
 
-/mob/proc/play_portrait_announcement(text, title, mob/living/carbon/human/portrait_owner, override_color = "#FFFFFF")
-	var/atom/movable/screen/text/screen_text/picture/potrait_custom_mugshot/portrait = new(null, null, portrait_owner)
-	portrait.announcement_title = title
-	play_screen_text(text, portrait, override_color)
-
-#define PORTRAIT_VISIBLE_BODY_CHARACTERS 48
 #define MAX_PORTRAIT_NAME_LEN 12
-
-/atom/movable/screen/text/screen_text/picture/potrait_custom_mugshot/play_to_client()
-	player?.add_to_screen(src)
-	if(fade_in_time)
-		animate(src, alpha = 255)
-
-	for(var/letter = 2 to length(text_to_play) + letters_per_update step letters_per_update)
-		var/window_start = max(1, letter - PORTRAIT_VISIBLE_BODY_CHARACTERS)
-		var/visible_text = copytext_char(text_to_play, window_start, letter)
-		maptext = "[style_open]<span class='langchat' style=font-size:24pt;text-align:left valign='top'><u>[uppertext(announcement_title)]:</u></span><br>[visible_text][style_close]"
-		sleep(play_delay)
-
-	addtimer(CALLBACK(src, PROC_REF(after_play)), fade_out_delay)
 
 /atom/movable/screen/text/screen_text/picture/potrait_custom_mugshot/Initialize(mapload, datum/hud/hud_owner, mob/living/mugshottee)
 	. = ..()
@@ -152,8 +131,6 @@
 	static_overlay.plane = plane
 	holding_movable.overlays += static_overlay
 
-
-
 	var/mutable_appearance/mugshot_name = mutable_appearance()
 	mugshot_name.appearance_flags = APPEARANCE_UI
 	mugshot_name.maptext_width = 66 // 64 (the icon) + 1 buffer each side
@@ -182,4 +159,3 @@
 	vis_contents += holding_movable
 
 #undef MAX_PORTRAIT_NAME_LEN
-#undef PORTRAIT_VISIBLE_BODY_CHARACTERS

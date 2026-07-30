@@ -84,7 +84,7 @@
 
 
 //general marine announcement
-/proc/marine_announcement(message, title = COMMAND_ANNOUNCE, sound_to_play = sound('sound/misc/notice2.ogg'), faction_to_display = FACTION_MARINE, add_PMCs = FALSE, signature, logging = ARES_LOG_MAIN, mob/living/carbon/human/portrait_owner)
+/proc/marine_announcement(message, title = COMMAND_ANNOUNCE, sound_to_play = sound('sound/misc/notice2.ogg'), faction_to_display = FACTION_MARINE, add_PMCs = FALSE, signature, logging = ARES_LOG_MAIN)
 	var/list/targets = GLOB.human_mob_list + GLOB.dead_mob_list
 	var/list/targets_to_garble = list()
 	var/list/coms_zs = SSradio.get_available_tcomm_zs(COMM_FREQ)
@@ -176,16 +176,10 @@
 			if(!is_shipside && !(current_turf?.z in coms_zs))
 				targets_to_garble += current_human
 
-	var/unsigned_message = message
 	if(!isnull(signature))
 		message += "<br><br><i> Signed by, <br> [signature]</i>"
 
 	announcement_helper(message, title, targets, sound_to_play, FALSE, targets_to_garble, FACTION_MARINE)
-
-	if(portrait_owner)
-		for(var/mob/living/carbon/human/target in targets)
-			var/portrait_message = (target in targets_to_garble) ? get_garbled_announcement(unsigned_message, FACTION_MARINE) : unsigned_message
-			target.play_portrait_announcement(portrait_message, title, portrait_owner)
 
 //AI announcement that uses talking into comms
 /proc/ai_announcement(message, sound_to_play = sound('sound/misc/interference.ogg'), logging = ARES_LOG_MAIN)
@@ -221,7 +215,7 @@
 
 //AI shipside announcement, that uses announcement mechanic instead of talking into comms
 //to ensure that all humans on ship hear it regardless of comms and power
-/proc/shipwide_ai_announcement(message, title = MAIN_AI_SYSTEM, sound_to_play = sound('sound/misc/interference.ogg'), signature, ares_logging = ARES_LOG_MAIN, quiet = FALSE, mob/living/carbon/human/portrait_owner)
+/proc/shipwide_ai_announcement(message, title = MAIN_AI_SYSTEM, sound_to_play = sound('sound/misc/interference.ogg'), signature, ares_logging = ARES_LOG_MAIN, quiet = FALSE)
 	var/list/targets = GLOB.human_mob_list + GLOB.dead_mob_list
 	for(var/mob/target as anything in targets)
 		if(isobserver(target))
@@ -230,7 +224,6 @@
 		if(!ishuman(target) || isyautja(target) || !is_mainship_level(target_turf?.z))
 			targets.Remove(target)
 
-	var/unsigned_message = message
 	if(!isnull(signature))
 		message += "<br><br><i> Signed by, <br> [signature]</i>"
 	switch(ares_logging)
@@ -240,10 +233,6 @@
 			log_ares_security(title, message, signature)
 
 	announcement_helper(message, title, targets, sound_to_play, quiet)
-
-	if(portrait_owner)
-		for(var/mob/living/carbon/human/target in targets)
-			target.play_portrait_announcement(unsigned_message, title, portrait_owner)
 
 /proc/all_hands_on_deck(message, title = MAIN_AI_SYSTEM, sound_to_play = sound('sound/misc/sound_misc_boatswain.ogg'))
 	shipwide_ai_announcement(message, title, sound_to_play, null, ARES_LOG_MAIN, FALSE)

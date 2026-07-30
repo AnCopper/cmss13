@@ -709,13 +709,13 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 			if(current_squad) //This is already checked, but ehh.
 				if(current_squad.primary_objective)
 					visible_message("[icon2html(src, viewers(src))] [SPAN_BOLDNOTICE("Reminding '[current_squad]' of primary objectives: [current_squad.primary_objective].")]")
-					current_squad.remind_objective(user, primary=TRUE)
+					current_squad.remind_objective(primary=TRUE)
 
 		if("remind_secondary")
 			if(current_squad) //This is already checked, but ehh.
 				if(current_squad.secondary_objective)
 					visible_message("[icon2html(src, viewers(src))] [SPAN_BOLDNOTICE("Reminding '[current_squad]' of secondary objectives: [current_squad.secondary_objective].")]")
-					current_squad.remind_objective(user, primary=FALSE)
+					current_squad.remind_objective(primary=FALSE)
 
 		if("set_primary")
 			var/input = sanitize_control_chars(tgui_input_text(user, "What will be the squad's primary objective?", "Primary Objective"))
@@ -723,7 +723,7 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 			if(params["target_squad_ref"])
 				target_squad = locate(params["target_squad_ref"])
 			if(target_squad && input)
-				target_squad.transmit_objective(input, user, primary=TRUE)
+				target_squad.transmit_objective(input, primary=TRUE)
 				visible_message("[icon2html(src, viewers(src))] [SPAN_BOLDNOTICE("Primary objective of squad '[target_squad]' set to '[input]'.")]")
 				log_overwatch("[key_name(user)] set [target_squad]'s primary objective to '[input]'.")
 				return TRUE
@@ -734,7 +734,7 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 			if(params["target_squad_ref"])
 				target_squad = locate(params["target_squad_ref"])
 			if(target_squad && input)
-				target_squad.transmit_objective(input, user, primary=FALSE)
+				target_squad.transmit_objective(input, primary=FALSE)
 				visible_message("[icon2html(src, viewers(src))] [SPAN_BOLDNOTICE("Secondary objective of squad '[target_squad]' set to '[input]'.")]")
 				log_overwatch("[key_name(user)] set [target_squad]'s secondary objective to '[input]'.")
 				return TRUE
@@ -974,12 +974,12 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 					signed = "[paygrade] [id.registered_name]"
 
 				if(announcement_type == "shipside")
-					shipwide_ai_announcement(input, COMMAND_SHIP_ANNOUNCE, signature = signed, portrait_owner = human_user)
+					shipwide_ai_announcement(input, COMMAND_SHIP_ANNOUNCE, signature = signed)
 					message_admins("[key_name(user)] has made a shipwide announcement.")
 					log_announcement("[key_name(user)] has announced the following to the ship: [input]")
 					COOLDOWN_START(src, cooldown_shipside_message, COOLDOWN_COMM_MESSAGE)
 				else
-					marine_announcement(input, announcement_title, faction_to_display = announcement_faction, add_PMCs = add_pmcs, signature = signed, portrait_owner = human_user)
+					marine_announcement(input, announcement_title, faction_to_display = announcement_faction, add_PMCs = add_pmcs, signature = signed)
 					message_admins("[key_name(user)] has made a command announcement.")
 					log_announcement("[key_name(user)] has announced the following: [input]")
 					COOLDOWN_START(src, cooldown_message, COOLDOWN_COMM_MESSAGE)
