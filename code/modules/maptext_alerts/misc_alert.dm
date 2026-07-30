@@ -94,6 +94,7 @@
 
 /atom/movable/screen/text/screen_text/picture/potrait_custom_mugshot/Initialize(mapload, datum/hud/hud_owner, mob/living/mugshottee)
 	. = ..()
+	overlays.Cut()
 	var/atom/movable/holding_movable = new
 	holding_movable.appearance_flags = APPEARANCE_UI|KEEP_TOGETHER
 	holding_movable.mouse_opacity = MOUSE_OPACITY_TRANSPARENT
@@ -121,9 +122,8 @@
 
 	holding_movable.overlays += mugshot
 
-	var/image/static_overlay = image('icons/UI_Icons/screen_alert_images.dmi', icon_state = image_to_play+"_static", pixel_y = image_to_play_offset_y, pixel_x = image_to_play_offset_x)
+	var/image/static_overlay = image(generate_crt_portrait_filter(mugshottee), pixel_y = image_to_play_offset_y, pixel_x = image_to_play_offset_x)
 	static_overlay.appearance_flags = APPEARANCE_UI
-	static_overlay.alpha = 110
 	static_overlay.layer = layer+0.2
 	static_overlay.plane = plane
 	holding_movable.overlays += static_overlay
@@ -158,5 +158,36 @@
 	holding_movable.overlays += mugshot_name
 
 	vis_contents += holding_movable
+
+/atom/movable/screen/text/screen_text/picture/potrait_custom_mugshot/proc/generate_crt_portrait_filter(mob/living/mugshottee)
+	var/icon/crt_filter = icon('icons/UI_Icons/screen_alert_images.dmi', "custom")
+	crt_filter.DrawBox(null, 1, 1, 64, 64)
+
+	var/phosphor = rgb(102, 255, 137, 145)
+	var/phosphor_dim = rgb(70, 210, 105, 55)
+	var/scanline = rgb(82, 235, 118, 28)
+
+	// CRT frame
+	crt_filter.DrawBox(phosphor, 2, 2, 18, 3)
+	crt_filter.DrawBox(phosphor, 2, 2, 3, 18)
+	crt_filter.DrawBox(phosphor, 47, 2, 63, 3)
+	crt_filter.DrawBox(phosphor, 62, 2, 63, 18)
+	crt_filter.DrawBox(phosphor, 2, 62, 18, 63)
+	crt_filter.DrawBox(phosphor, 2, 47, 3, 63)
+	crt_filter.DrawBox(phosphor, 47, 62, 63, 63)
+	crt_filter.DrawBox(phosphor, 62, 47, 63, 63)
+
+	// Stable scanline pattern per character
+	var/pattern_seed = length(mugshottee?.real_name) * 3 + 5
+	for(var/y = 7, y <= 58, y += 4)
+		var/leading_gap = (pattern_seed + y * 3) % 12
+		var/trailing_gap = (pattern_seed + y * 5) % 15
+		crt_filter.DrawBox(scanline, 5 + leading_gap, y, 59 - trailing_gap, y)
+
+		if((y + pattern_seed) % 3 == 0)
+			var/glitch_x = 7 + ((y * 7 + pattern_seed) % 42)
+			crt_filter.DrawBox(phosphor_dim, glitch_x, y + 1, min(glitch_x + 5, 59), y + 1)
+
+	return crt_filter
 
 #undef MAX_NON_COMMTITLE_LEN
