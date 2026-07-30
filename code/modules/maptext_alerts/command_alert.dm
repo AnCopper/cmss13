@@ -27,6 +27,22 @@
 	name = "Send HUD Announcement"
 	action_icon_state = "screen_order_marine"
 
+/datum/action/innate/message_squad/Destroy()
+	STOP_PROCESSING(SSfasteffects, src)
+	return ..()
+
+/datum/action/innate/message_squad/enter_cooldown(amount)
+	. = ..()
+	START_PROCESSING(SSfasteffects, src)
+
+/datum/action/innate/message_squad/process()
+	var/time_left = ability_used_time - world.time
+	if(!owner || !button || time_left <= 0)
+		button?.set_maptext()
+		return PROCESS_KILL
+
+	button.set_maptext(SMALL_FONTS(7, ceil(time_left / 10)), 4, 4)
+
 /datum/action/innate/message_squad/can_use_action()
 	. = ..()
 	if(!.)
