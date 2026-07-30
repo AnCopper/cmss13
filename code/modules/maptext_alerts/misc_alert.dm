@@ -108,6 +108,8 @@
 	mugshot.pixel_y = image_to_play_offset_y - 1 //scale shittery meant this didn't line up exactly without the -1
 	mugshot.layer = layer+0.1
 	mugshot.plane = plane
+	mugshot.color = "#82d99a"
+	mugshot.alpha = 180
 	mugshot.transform = matrix().Scale(3) //only need to scale once, although this can actually be after as well alpha filter stuff, makes no diff. we use a NEW matrix to also fix things like people lying down
 	mugshot.dir = SOUTH
 	var/mutable_appearance/alphafilter = mutable_appearance('icons/effects/alphacolors.dmi', "announcement")
@@ -121,7 +123,7 @@
 
 	var/image/static_overlay = image('icons/UI_Icons/screen_alert_images.dmi', icon_state = image_to_play+"_static", pixel_y = image_to_play_offset_y, pixel_x = image_to_play_offset_x)
 	static_overlay.appearance_flags = APPEARANCE_UI
-	static_overlay.alpha = 75
+	static_overlay.alpha = 110
 	static_overlay.layer = layer+0.2
 	static_overlay.plane = plane
 	holding_movable.overlays += static_overlay
