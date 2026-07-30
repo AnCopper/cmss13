@@ -1567,6 +1567,25 @@ and you're good to go.
 			projectile_to_fire.ammo.on_hit_mob(attacked_mob, projectile_to_fire, user)
 			attacked_mob.bullet_act(projectile_to_fire)
 
+		if(attacked_mob == user && user.a_intent == INTENT_HARM && istype(src, /obj/item/weapon/gun/shotgun) && ishuman(user))
+			var/mob/living/carbon/human/human_user = user
+			var/target_zone = check_zone(user.zone_selected)
+			switch(target_zone)
+				if("chest")
+					var/datum/internal_organ/heart/heart = human_user.internal_organs_by_name["heart"]
+					if(heart)
+						heart.damage = max(heart.damage, heart.min_broken_damage)
+						heart.set_organ_status()
+				if("head")
+					var/datum/internal_organ/brain/brain = human_user.internal_organs_by_name["brain"]
+					var/datum/internal_organ/eyes/eyes = human_user.internal_organs_by_name["eyes"]
+					brain?.take_damage(100)
+					eyes?.take_damage(100)
+				if("l_arm", "r_arm", "l_hand", "r_hand", "l_leg", "r_leg", "l_foot", "r_foot")
+					var/obj/limb/target_limb = human_user.get_limb(target_zone)
+					target_limb?.droplimb(FALSE, FALSE, create_cause_data(initial(name), user))
+
+
 		if(check_for_attachment_fire)
 			active_attachable.last_fired = world.time
 		else
