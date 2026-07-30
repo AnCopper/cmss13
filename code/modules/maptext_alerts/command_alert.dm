@@ -1,4 +1,5 @@
 #define MAX_COMMAND_MESSAGE_LEN 120
+#define MAX_COMMAND_LINE_BREAKS 3
 #define COOLDOWN_HUD_LENGTH 1200
 
 /atom/movable/screen/text/screen_text/command_order
@@ -177,9 +178,14 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 				return
 		sound_alert = 'sound/effects/sos-morse-code.ogg'
 		announcement_title = "[human_owner.job]'s Announcement"
-	var/text = tgui_input_text(human_owner, "Maximum message length [MAX_COMMAND_MESSAGE_LEN]", "Send message to [choice ? choice : squads_being_overwatched_by_me[0]]",  max_length = MAX_COMMAND_MESSAGE_LEN, multiline = TRUE)
-	if(!text)
-		return
+	var/text
+	do
+		text = tgui_input_text(human_owner, "Maximum message length [MAX_COMMAND_MESSAGE_LEN]. Maximum line breaks [MAX_COMMAND_LINE_BREAKS].", "Send message to [choice ? choice : squads_being_overwatched_by_me[0]]", text, max_length = MAX_COMMAND_MESSAGE_LEN, multiline = TRUE)
+		if(!text)
+			return
+		if(length(splittext(text, "\n")) > MAX_COMMAND_LINE_BREAKS + 1)
+			to_chat(human_owner, SPAN_WARNING("HUD announcements are limited to [MAX_COMMAND_LINE_BREAKS] line breaks."))
+	while(length(splittext(text, "\n")) > MAX_COMMAND_LINE_BREAKS + 1)
 	if(!can_use_action())
 		return //dead or timer or whatever
 	if(check_again_for_cmd_headset)
