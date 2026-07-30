@@ -31,15 +31,6 @@
 	AddComponent(/datum/component/tacmap, has_drawing_tools=TRUE, minimap_flag=minimap_flag, has_update=TRUE)
 	return ..()
 
-/*
-/obj/item/device/cotablet/equipped(mob/user, slot, silent)
-	. = ..()
-	if(ishuman(user))
-		var/datum/action/innate/message_squad/hud_action = locate(/datum/action/innate/message_squad) in user.actions
-		if(hud_action)
-			hud_action.ability_used_time = world.time
-*/
-
 /obj/item/device/cotablet/proc/disable_pmc()
 	if(MODE_HAS_FLAG(MODE_FACTION_CLASH))
 		add_pmcs = FALSE
@@ -122,7 +113,7 @@
 					var/paygrade = get_paygrades(id.paygrade, FALSE, human_user.gender)
 					signed = "[paygrade] [id.registered_name]"
 
-			marine_announcement(input, announcement_title, faction_to_display = announcement_faction, add_PMCs = add_pmcs, signature = signed)
+			marine_announcement(input, announcement_title, faction_to_display = announcement_faction, add_PMCs = add_pmcs, signature = signed, portrait_owner = user)
 			message_admins("[key_name(user)] has made a command announcement.")
 			log_announcement("[key_name(user)] has announced the following: [input]")
 			COOLDOWN_START(src, announcement_cooldown, cooldown_between_messages)

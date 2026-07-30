@@ -394,10 +394,6 @@
 		overwatch_officer = null
 		clear_ref_tracking(previous)
 	overwatch_officer = target_mob
-	//Update the HUD message overlay to have a squad colour
-	var/datum/action/innate/message_squad/act = locate(/datum/action/innate/message_squad) in target_mob.actions
-	if(act)
-		act.update_button_icon()
 	RegisterSignal(overwatch_officer, COMSIG_PARENT_QDELETING, PROC_REF(personnel_deleted), override = TRUE)
 	return TRUE
 
@@ -407,10 +403,6 @@
 		return FALSE
 	var/mob/operator = overwatch_officer
 	overwatch_officer = null
-	//Update the HUD message overlay to have a squad colour
-	var/datum/action/innate/message_squad/act = locate(/datum/action/innate/message_squad) in operator.actions
-	if(act)
-		act.update_button_icon()
 	clear_ref_tracking(operator)
 	return TRUE
 
@@ -476,25 +468,37 @@
 	to_chat(targets, html = message, type = MESSAGE_TYPE_RADIO)
 
 /// Displays a message to squad members directly on the game map
-/datum/squad/proc/send_maptext(text="", title_text="", only_leader=FALSE, list/targets_to_garble=null, garbled_text="")
+/datum/squad/proc/send_maptext(text="", title_text="", only_leader=FALSE, list/targets_to_garble=null, garbled_text="", mob/living/carbon/human/portrait_owner)
 	var/message_color = chat_color
 
 	if(only_leader)
 		if(squad_leader && squad_leader.stat == CONSCIOUS && squad_leader.client)
 			playsound_client(squad_leader.client, 'sound/effects/radiostatic.ogg', squad_leader.loc, 25, FALSE)
 			if(squad_leader in targets_to_garble)
-				squad_leader.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[garbled_text]", /atom/movable/screen/text/screen_text/command_order, message_color)
+				if(portrait_owner)
+					squad_leader.play_portrait_announcement(garbled_text, title_text, portrait_owner, message_color)
+				else
+					squad_leader.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[garbled_text]", /atom/movable/screen/text/screen_text/command_order, message_color)
 			else
-				squad_leader.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[text]", /atom/movable/screen/text/screen_text/command_order, message_color)
+				if(portrait_owner)
+					squad_leader.play_portrait_announcement(text, title_text, portrait_owner, message_color)
+				else
+					squad_leader.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[text]", /atom/movable/screen/text/screen_text/command_order, message_color)
 		return
 
 	for(var/mob/living/carbon/human/marine in marines_list)
 		if(marine.stat == CONSCIOUS && marine.client) //Only living and connected people in our squad
 			playsound_client(marine.client, 'sound/effects/radiostatic.ogg', marine.loc, 25, FALSE)
 			if(marine in targets_to_garble)
-				marine.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[garbled_text]", /atom/movable/screen/text/screen_text/command_order, message_color)
+				if(portrait_owner)
+					marine.play_portrait_announcement(garbled_text, title_text, portrait_owner, message_color)
+				else
+					marine.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[garbled_text]", /atom/movable/screen/text/screen_text/command_order, message_color)
 			else
-				marine.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[text]", /atom/movable/screen/text/screen_text/command_order, message_color)
+				if(portrait_owner)
+					marine.play_portrait_announcement(text, title_text, portrait_owner, message_color)
+				else
+					marine.play_screen_text("<span class='langchat' style=font-size:16pt;text-align:center valign='top'><u>[title_text]</u></span><br>[text]", /atom/movable/screen/text/screen_text/command_order, message_color)
 
 /// Displays a message to the squad members in chat
 /datum/squad/proc/send_message(text="", transmitter=null, only_leader=FALSE, list/targets_to_garble=null, garbled_text="")
@@ -526,9 +530,10 @@
 /datum/squad/proc/transmit_alert(prefix="", text="", postfix="", maptext_title="", transmitter=null, only_leader=FALSE)
 	var/garbled_text = get_garbled_announcement(text, faction)
 	var/list/targets_to_garble = get_garbled_targets(only_leader)
+	var/mob/living/carbon/human/portrait_owner = ishuman(transmitter) ? transmitter : null
 
 	send_message("[prefix][text][postfix]", transmitter, only_leader, targets_to_garble, "[prefix][garbled_text][postfix]")
-	send_maptext(text, maptext_title, only_leader, targets_to_garble, garbled_text)
+	send_maptext(text, maptext_title, only_leader, targets_to_garble, garbled_text, portrait_owner)
 
 	var/garbled_count = length(targets_to_garble)
 	if(garbled_count)
@@ -545,9 +550,10 @@
 
 	var/garbled_text = get_garbled_announcement(text, faction)
 	var/list/targets_to_garble = get_garbled_targets(only_leader=FALSE)
+	var/mob/living/carbon/human/portrait_owner = ishuman(transmitter) ? transmitter : null
 
 	send_message("[prefix][text][postfix]", transmitter, FALSE, targets_to_garble, "[prefix][garbled_text][postfix]")
-	send_maptext(text, maptext_title, FALSE, targets_to_garble, garbled_text)
+	send_maptext(text, maptext_title, FALSE, targets_to_garble, garbled_text, portrait_owner)
 
 	var/garbled_count = length(targets_to_garble)
 	if(garbled_count)
@@ -577,9 +583,10 @@
 		garbled_text = secondary_objective_garbled
 
 	var/list/targets_to_garble = get_garbled_targets(only_leader=FALSE)
+	var/mob/living/carbon/human/portrait_owner = ishuman(transmitter) ? transmitter : null
 
 	send_message("[prefix][text][postfix]", transmitter, FALSE, targets_to_garble, "[prefix][garbled_text][postfix]")
-	send_maptext(text, maptext_title, FALSE, targets_to_garble, garbled_text)
+	send_maptext(text, maptext_title, FALSE, targets_to_garble, garbled_text, portrait_owner)
 
 /// Returns a list of squad members that are without coms
 /datum/squad/proc/get_garbled_targets(only_leader=FALSE)
