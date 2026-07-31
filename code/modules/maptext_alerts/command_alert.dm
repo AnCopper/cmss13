@@ -66,7 +66,6 @@
 	INVOKE_NEXT_TICK(src, TYPE_PROC_REF(/datum/action/innate/message_squad, update_button_icon))
 
 
-GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_XO, JOB_CO, JOB_XO, JOB_UPP_KPT_OFFICER, JOB_UPP_CO_OFFICER, JOB_UPP_MAY_OFFICER, JOB_UPP_LTKOL_OFFICER))
 /datum/action/innate/message_squad/update_button_icon()
 	. = ..()
 	button.overlays.Cut()
@@ -75,11 +74,7 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 	var/color_mix = mix_color_from_overwatched_squads(owner)
 	colour_blend.color = color_mix
 	if(color_mix == null)
-		if(owner.job in GLOB.ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION)
-			button.overlays += colour_blend //special roles get it regardless of overwatching a squad
-			button.icon_state = "template_on"
-		else
-			button.icon_state = "template"
+		button.icon_state = "template"
 	else
 		button.overlays += colour_blend
 		button.icon_state = "template_on"
@@ -136,7 +131,6 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 	var/list/squads_being_overwatched_by_me = list()
 	var/choice
 	var/check_again_for_cmd_headset
-	var/obj/item/device/cotablet/command_tablet = locate(/obj/item/device/cotablet) in human_owner.contents
 	if(human_owner.assigned_squad)
 		if(human_owner.assigned_fireteam)
 			var/list/current_squad = human_owner.assigned_squad.marines_list
@@ -164,8 +158,7 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 				squads_being_overwatched_by_me.Add(overwatched_squad.name)
 		if(squads_being_overwatched_by_me.len >= 2)
 			squads_being_overwatched_by_me.Add("All Squads") //special case
-		if(command_tablet || human_owner.job in GLOB.ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION)
-			squads_being_overwatched_by_me.Add(human_owner.faction) //mob internal faction is checked
+		squads_being_overwatched_by_me.Add(human_owner.faction) //mob internal faction is checked
 		if(!squads_being_overwatched_by_me.len)
 			to_chat(owner, SPAN_WARNING("You need to overwatch a squad to send a HUD announcement."))
 			return
