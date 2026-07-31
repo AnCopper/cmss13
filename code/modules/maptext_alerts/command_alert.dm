@@ -193,7 +193,7 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 			else
 				return
 		sound_alert = 'sound/effects/sos-morse-code.ogg'
-		announcement_title = "[human_owner.job]'s Announcement"
+		announcement_title = "[human_owner.comm_title]'s Announcement"
 	var/text
 	do
 		text = tgui_input_text(human_owner, "Maximum message length [MAX_COMMAND_MESSAGE_LEN]. Maximum line breaks [MAX_COMMAND_LINE_BREAKS].", "Send message to [choice ? choice : squads_being_overwatched_by_me[0]]", text, max_length = MAX_COMMAND_MESSAGE_LEN, multiline = TRUE)
