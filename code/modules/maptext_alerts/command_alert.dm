@@ -51,7 +51,7 @@
 	if(owner.is_mob_incapacitated())
 		return FALSE
 
-	if(!(HAS_TRAIT(owner, TRAIT_LEADERSHIP)))
+	if(!skillcheck(owner, SKILL_OVERWATCH, SKILL_OVERWATCH_TRAINED))
 		return FALSE
 	var/mob/living/carbon/human/human_owner = owner
 	var/obj/structure/machinery/computer/overwatch/comp = locate() in view(7,owner)

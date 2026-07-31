@@ -197,6 +197,8 @@
 	if(show_job_gear)
 		load_gear(new_human, mob_client)
 	load_status(new_human, mob_client)
+	if(skillcheck(new_human, SKILL_OVERWATCH, SKILL_OVERWATCH_TRAINED))
+		give_action(new_human, /datum/action/innate/message_squad)
 	load_vanity(new_human, mob_client)
 	load_traits(new_human, mob_client)
 	load_vendor_points(new_human, mob_client)

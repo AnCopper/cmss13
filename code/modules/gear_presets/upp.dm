@@ -1720,10 +1720,6 @@
 	.=..()
 	access = get_access(ACCESS_LIST_UPP_ALL)
 
-/datum/equipment_preset/upp/officer/load_status(mob/living/carbon/human/new_human, client/mob_client)
-	. = ..()
-	give_action(new_human, /datum/action/innate/message_squad)
-
 /datum/equipment_preset/upp/officer/dressed/load_gear(mob/living/carbon/human/new_human)
 	//back
 	new_human.equip_to_slot_or_del(new /obj/item/storage/backpack/lightpack/upp, WEAR_BACK)
