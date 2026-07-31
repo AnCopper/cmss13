@@ -136,6 +136,7 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 	var/list/squads_being_overwatched_by_me = list()
 	var/choice
 	var/check_again_for_cmd_headset
+	var/obj/item/device/cotablet/command_tablet = locate(/obj/item/device/cotablet) in human_owner.contents
 	if(human_owner.assigned_squad)
 		if(human_owner.assigned_fireteam)
 			var/list/current_squad = human_owner.assigned_squad.marines_list
@@ -163,7 +164,7 @@ GLOBAL_LIST_INIT(ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION, list(JOB_WO_CO, JOB_WO_
 				squads_being_overwatched_by_me.Add(overwatched_squad.name)
 		if(squads_being_overwatched_by_me.len >= 2)
 			squads_being_overwatched_by_me.Add("All Squads") //special case
-		if(human_owner.job in GLOB.ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION)
+		if(command_tablet || human_owner.job in GLOB.ROLES_GLOBAL_FACTION_MESSAGE_EXCEPTION)
 			squads_being_overwatched_by_me.Add(human_owner.faction) //mob internal faction is checked
 		if(!squads_being_overwatched_by_me.len)
 			to_chat(owner, SPAN_WARNING("You need to overwatch a squad to send a HUD announcement."))
