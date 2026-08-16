@@ -380,7 +380,7 @@
 	item_state = "broadcastingcamera"
 	unacidable = TRUE
 	explo_proof = TRUE
-	w_class = SIZE_HUGE
+	w_class = SIZE_MEDIUM
 	flags_item = NO_FLAGS
 	flags_equip_slot = NO_FLAGS //cannot be equiped
 	var/active = FALSE

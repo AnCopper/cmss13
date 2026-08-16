@@ -150,6 +150,7 @@
 	. = ..()
 	new_human.vendor_buyable_categories[CIVILIAN_CAN_BUY_BACKPACK] = 1
 	new_human.vendor_buyable_categories[CIVILIAN_CAN_BUY_UTILITY] = 1
+	new_human.vendor_buyable_categories[CORRESPONDENT_CAN_BUY_CAMERA] = 1
 
 /datum/equipment_preset/uscm_ship/reporter_uscm
 	name = "Combat Correspondent"
@@ -161,7 +162,7 @@
 	)
 	assignment = JOB_COMBAT_REPORTER
 	job_title = JOB_COMBAT_REPORTER
-	paygrades = list(PAY_SHORT_ME4 = JOB_PLAYTIME_TIER_0)
+	paygrades = list(PAY_SHORT_ME4 = JOB_PLAYTIME_TIER_0, PAY_SHORT_ME5 = JOB_PLAYTIME_TIER_2, PAY_SHORT_ME6 = JOB_PLAYTIME_TIER_3, PAY_SHORT_ME7 = JOB_PLAYTIME_TIER_4)
 	role_comm_title = "CC"
 	skills = /datum/skills/pfc
 	idtype = /obj/item/card/id/dogtag
@@ -190,6 +191,10 @@
 	new_human.equip_to_slot_or_del(new /obj/item/storage/pouch/general/medium(new_human), WEAR_R_STORE)
 
 	new_human.equip_to_slot_or_del(new /obj/item/device/camera(new_human), WEAR_L_HAND)
+
+/datum/equipment_preset/uscm_ship/reporter_uscm/load_vendor_points(mob/living/carbon/human/new_human, client/mob_client)
+	. = ..()
+	new_human.vendor_buyable_categories[CORRESPONDENT_CAN_BUY_CAMERA] = 1
 
 //*****************************************************************************************************/
 

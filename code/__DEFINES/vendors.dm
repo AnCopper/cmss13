@@ -33,6 +33,7 @@
 #define CIVILIAN_CAN_BUY_SHOES "civilian_shoes"
 #define CIVILIAN_CAN_BUY_GLOVES "civilian_gloves"
 #define CIVILIAN_CAN_BUY_ACCESSORY "civilian_accessory"
+#define CORRESPONDENT_CAN_BUY_CAMERA "correspondent_camera"
 
 #define YAUTJA_CAN_BUY_ESSENTIALS "yautja_essentials"
 #define YAUTJA_CAN_BUY_ARMOR "yautja_armor"
