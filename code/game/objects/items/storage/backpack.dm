@@ -1055,6 +1055,7 @@ GLOBAL_LIST_EMPTY_TYPED(radio_packs, /obj/item/storage/backpack/marine/satchel/r
 
 	camo_active = TRUE
 	ADD_TRAIT(H, TRAIT_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_BACK))
+	ADD_TRAIT(H, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_BACK))
 	H.visible_message(SPAN_DANGER("[H] vanishes into thin air!"), SPAN_NOTICE("You activate your [fluff_item]'s camouflage."), max_distance = 4)
 	playsound(H.loc, camo_on_sound, 15, TRUE)
 	H.unset_interaction()
@@ -1104,6 +1105,7 @@ GLOBAL_LIST_EMPTY_TYPED(radio_packs, /obj/item/storage/backpack/marine/satchel/r
 
 	camo_active = FALSE
 	REMOVE_TRAIT(H, TRAIT_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_BACK))
+	REMOVE_TRAIT(H, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_BACK))
 	H.visible_message(SPAN_DANGER("[H] shimmers into existence!"), SPAN_WARNING("Your [fluff_item]'s camouflage has deactivated!"), max_distance = 4)
 	playsound(H.loc, camo_off_sound, 15, TRUE)
 

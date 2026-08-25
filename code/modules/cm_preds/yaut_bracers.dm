@@ -813,6 +813,7 @@
 			return FALSE
 
 		ADD_TRAIT(M, TRAIT_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_HANDS))
+		ADD_TRAIT(M, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_HANDS))
 
 		RegisterSignal(M, COMSIG_HUMAN_EXTINGUISH, PROC_REF(wrapper_fizzle_camouflage))
 		RegisterSignal(M, COMSIG_HUMAN_PRE_BULLET_ACT, PROC_REF(bullet_hit))
@@ -880,6 +881,7 @@
 		cloak_malfunction = world.time + decloak_timer
 
 	REMOVE_TRAIT(user, TRAIT_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_HANDS))
+	REMOVE_TRAIT(user, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_EQUIPMENT(WEAR_HANDS))
 	log_game("[key_name_admin(user)] has disabled their cloaking device.")
 	user.visible_message(SPAN_WARNING("[user] shimmers into existence!"), SPAN_WARNING("Your cloaking device deactivates."))
 	var/sound_to_use

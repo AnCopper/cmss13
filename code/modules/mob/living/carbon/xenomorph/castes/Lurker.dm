@@ -135,6 +135,7 @@
 		lurker_pounce_action.knockdown = TRUE // pounce knocks down
 		lurker_pounce_action.freeze_self = TRUE
 	ADD_TRAIT(bound_xeno, TRAIT_CLOAKED, TRAIT_SOURCE_ABILITY("cloak"))
+	ADD_TRAIT(bound_xeno, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_ABILITY("cloak"))
 	RegisterSignal(bound_xeno, COMSIG_MOB_EFFECT_CLOAK_CANCEL, PROC_REF(decloak_handler))
 	bound_xeno.stealth = TRUE
 	invis_start_time = world.time
@@ -147,6 +148,7 @@
 		lurker_pounce_action.freeze_self = FALSE
 	bound_xeno.stealth = FALSE
 	REMOVE_TRAIT(bound_xeno, TRAIT_CLOAKED, TRAIT_SOURCE_ABILITY("cloak"))
+	REMOVE_TRAIT(bound_xeno, TRAIT_THERMAL_CLOAKED, TRAIT_SOURCE_ABILITY("cloak"))
 	UnregisterSignal(bound_xeno, COMSIG_MOB_EFFECT_CLOAK_CANCEL)
 	invis_start_time = -1
 

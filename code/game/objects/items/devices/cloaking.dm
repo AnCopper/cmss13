@@ -49,11 +49,13 @@
 	src.add_fingerprint(user)
 	if(chameleon_on)
 		user.alpha = 25
+		ADD_TRAIT(user, TRAIT_THERMAL_CLOAKED, src)
 		to_chat(user, SPAN_NOTICE("You activate [src]."))
 		spark_system.start(do_NOT_delete = TRUE)
 		src.icon_state = "shield1"
 	else
 		user.alpha = initial(user.alpha)
+		REMOVE_TRAIT(user, TRAIT_THERMAL_CLOAKED, src)
 		to_chat(user, SPAN_NOTICE("You deactivate [src]."))
 		src.icon_state = "shield0"
 		spark_system.start(do_NOT_delete = TRUE)
@@ -62,6 +64,7 @@
 	if(chameleon_on)
 		spark_system.start(do_NOT_delete = TRUE)
 		user.alpha = initial(user.alpha)
+		REMOVE_TRAIT(user, TRAIT_THERMAL_CLOAKED, src)
 		chameleon_cooldown = world.time + 50
 		chameleon_on = FALSE
 		src.icon_state = "shield0"
