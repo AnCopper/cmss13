@@ -144,7 +144,10 @@
 			icon_state = "fuelpump_on"
 		return
 
-	switch(SShijack.current_progress)
+	var/fuel_progress = SShijack.current_progress
+	if(SShijack.sd_route_selected)
+		fuel_progress *= SShijack.required_progress / SShijack.ftl_required_progress
+	switch(fuel_progress)
 		if(-INFINITY to 24)
 			icon_state = "fuelpump_0"
 		if(25 to 49)
@@ -171,7 +174,10 @@
 	if(get_dist(user, src) > 2 && user != loc)
 		return
 
-	switch(SShijack.current_progress)
+	var/fuel_progress = SShijack.current_progress
+	if(SShijack.sd_route_selected)
+		fuel_progress *= SShijack.required_progress / SShijack.ftl_required_progress
+	switch(fuel_progress)
 		if(-INFINITY to 24)
 			. += SPAN_NOTICE("It looks like it barely has any fuel yet.")
 		if(25 to 49)

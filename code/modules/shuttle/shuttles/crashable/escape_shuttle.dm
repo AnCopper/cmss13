@@ -28,6 +28,9 @@
 			air.linked_shuttle = src
 
 /obj/docking_port/mobile/crashable/escape_shuttle/proc/cancel_evac()
+	if(launched || mode != SHUTTLE_IDLE)
+		return
+
 	door_handler.control_doors("force-unlock")
 	evac_set = FALSE
 
@@ -51,7 +54,7 @@
 		air.unslashable = FALSE
 		air.unacidable = FALSE
 
-/obj/docking_port/mobile/crashable/escape_shuttle/evac_launch()
+/obj/docking_port/mobile/crashable/escape_shuttle/evac_launch(force = FALSE)
 	. = ..()
 
 	if(mode == SHUTTLE_CRASHED)
@@ -61,7 +64,7 @@
 		return
 
 	var/obj/structure/machinery/computer/shuttle/escape_pod_panel/panel = getControlConsole()
-	if(panel.pod_state == STATE_DELAYED)
+	if(panel.pod_state == STATE_DELAYED && !force)
 		return
 
 	door_handler.control_doors("force-lock-launch")
@@ -105,6 +108,9 @@
 
 	if(SShijack.crashed)
 		return TRUE
+
+	if(SShijack.stable_orbit)
+		return FALSE
 
 	if(SShijack.hijack_status >= HIJACK_OBJECTIVES_FTL_CRASH)
 		return FALSE

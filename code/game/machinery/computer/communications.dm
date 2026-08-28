@@ -10,6 +10,8 @@
 #define STATE_CONFIRM_LEVEL 10
 #define STATE_DESTROY 11
 #define STATE_DEFCONLIST 12
+#define STATE_SELECT_SD_ROUTE 13
+#define STATE_START_COMMAND_SD 14
 
 //Note: Commented out procs are things I left alone and did not revise. Usually AI-related interactions.
 
@@ -53,6 +55,24 @@
 
 /obj/structure/machinery/computer/communications/Destroy()
 	return ..()
+
+/// Revalidates a senior command user's ID and biometrics before an irreversible self-destruct action
+/obj/structure/machinery/computer/communications/proc/verify_self_destruct_authorization(mob/user)
+	if(authenticated != 2)
+		to_chat(user, SPAN_WARNING("You are not authorized to access the self-destruct controls."))
+		return FALSE
+	if(!ishuman(user))
+		to_chat(user, SPAN_WARNING("Biometric authorization requires a human operator."))
+		return FALSE
+
+	var/mob/living/carbon/human/human_user = user
+	var/obj/item/card/id/idcard = human_user?.get_active_hand()
+	if(!istype(idcard))
+		idcard = human_user?.get_idcard()
+	if(!istype(idcard) || !(ACCESS_MARINE_SENIOR in idcard.access) || !idcard.check_biometrics(human_user))
+		to_chat(user, SPAN_WARNING("Biometrics failure! A senior command ID registered to you is required to authorize this action."))
+		return FALSE
+	return TRUE
 
 /obj/structure/machinery/computer/communications/process()
 	if(..() && state != STATE_STATUSDISPLAY)
@@ -231,8 +251,65 @@
 
 			state = STATE_DISTRESS
 
+		if("select_sd_route")
+			if(state == STATE_SELECT_SD_ROUTE)
+				if(!verify_self_destruct_authorization(usr))
+					state = STATE_DEFAULT
+					return FALSE
+				if(SShijack.admin_sd_blocked)
+					to_chat(usr, SPAN_WARNING("ARES has locked the self-destruct system."))
+					state = STATE_DEFAULT
+					return FALSE
+				if(SShijack.sd_route_selected || !SShijack.select_self_destruct_route())
+					to_chat(usr, SPAN_WARNING("Emergency fuel can no longer be diverted to the self-destruct system."))
+					state = STATE_DEFAULT
+					return FALSE
+
+				to_chat(usr, SPAN_NOTICE("Emergency fuel diverted to orbital stabilization and the self-destruct reserve. FTL has been permanently disabled."))
+				log_game("[key_name(usr)] diverted emergency fuel to the self-destruct system, permanently disabling FTL.")
+				message_admins("[key_name_admin(usr)] diverted emergency fuel to the self-destruct system, permanently disabling FTL.")
+				log_ares_security("Self-Destruct Fuel Diversion", "Diverted emergency fuel to orbital stabilization and the self-destruct reserve.", usr)
+				state = STATE_DEFAULT
+				return TRUE
+
+			state = STATE_SELECT_SD_ROUTE
+
+		if("start_command_sd")
+			if(state == STATE_START_COMMAND_SD)
+				if(!verify_self_destruct_authorization(usr))
+					state = STATE_DEFAULT
+					return FALSE
+				if(SShijack.admin_sd_blocked)
+					to_chat(usr, SPAN_WARNING("ARES has locked the self-destruct system."))
+					state = STATE_DEFAULT
+					return FALSE
+				if(SShijack.command_sd_active || SShijack.sd_detonated)
+					to_chat(usr, SPAN_WARNING("The [MAIN_SHIP_NAME]'s self-destruct is already active."))
+					state = STATE_DEFAULT
+					return FALSE
+				if(!SShijack.stable_orbit || !SShijack.start_command_self_destruct())
+					to_chat(usr, SPAN_WARNING("The self-destruct system rejects the command. Stable orbit may not have been achieved."))
+					state = STATE_DEFAULT
+					return FALSE
+
+				log_game("[key_name(usr)] initiated the command self-destruct sequence after achieving stable orbit.")
+				message_admins("[key_name_admin(usr)] initiated the command self-destruct sequence after achieving stable orbit.")
+				log_ares_security("Command Self-Destruct", "Initiated the self-destruct sequence after achieving stable orbit.", usr)
+				state = STATE_DEFAULT
+				return TRUE
+
+			state = STATE_START_COMMAND_SD
+
 		if("destroy")
 			if(state == STATE_DESTROY)
+				if(SSticker?.mode?.is_in_endgame)
+					to_chat(usr, SPAN_WARNING("High Command self-destruct requests are unavailable during hijack emergency navigation."))
+					state = STATE_DEFAULT
+					return FALSE
+				if(authenticated != 2)
+					to_chat(usr, SPAN_WARNING("You are not authorized to access the self-destruct controls."))
+					state = STATE_DEFAULT
+					return FALSE
 
 				//Comment to test
 				if(world.time < DISTRESS_TIME_LOCK)
@@ -344,7 +421,7 @@
 		return FALSE
 
 	//Should be refactored later, if there's another ship that can appear during a mode with a comm console.
-	if(!istype(loc.loc, /area/almayer/command/cic)) //Has to be in the CIC. Can also be a generic CIC area to communicate, if wanted.
+	if(!istype(loc.loc, /area/almayer/command/cic) && !istype(loc.loc, /area/almayer/command/cicconference)) //Has to be in the CIC.
 		to_chat(usr, SPAN_WARNING("Unable to establish a connection."))
 		return FALSE
 
@@ -373,7 +450,21 @@
 					dat += length(GLOB.admins) > 0 ? "<BR><A href='byond://?src=\ref[src];operation=messageUSCM'>Send a message to USCM</A>" : "<BR>USCM communication offline"
 					dat += "<BR><A href='byond://?src=\ref[src];operation=award'>Award a medal</A>"
 					dat += "<BR><A href='byond://?src=\ref[src];operation=distress'>Send Distress Beacon</A>"
-					dat += "<BR><A href='byond://?src=\ref[src];operation=destroy'>Activate Self-Destruct</A>"
+					var/hijack_sd_available = SSticker?.mode?.is_in_endgame && SShijack.hijack_status == HIJACK_OBJECTIVES_STARTED && !SShijack.in_ftl
+					if(SShijack.command_sd_active || SShijack.sd_detonated || (SShijack.sd_unlocked && SShijack.overloaded_generators))
+						dat += "<BR><B>Self-Destruct Active - [SShijack.get_sd_eta()]</B>"
+					else if(SSticker?.mode?.is_in_endgame && SShijack.hijack_status == HIJACK_OBJECTIVES_STARTED && SShijack.in_ftl)
+						dat += "<BR>Self-Destruct Fuel Diversion Unavailable - FTL Active"
+					else if(hijack_sd_available && SShijack.stable_orbit)
+						dat += "<BR><A href='byond://?src=\ref[src];operation=start_command_sd'>Initiate Self-Destruct</A>"
+					else if(hijack_sd_available && SShijack.sd_route_selected)
+						dat += "<BR>Self-Destruct Fueling - Stable Orbit ETA: [SShijack.get_evac_eta()]"
+					else if(hijack_sd_available)
+						dat += "<BR><A href='byond://?src=\ref[src];operation=select_sd_route'>Divert Fuel to Self-Destruct</A>"
+					else if(SSticker?.mode?.is_in_endgame)
+						dat += "<BR>High Command Self-Destruct Request Unavailable"
+					else
+						dat += "<BR><A href='byond://?src=\ref[src];operation=destroy'>Activate Self-Destruct</A>"
 					switch(SShijack.evac_status)
 						if(EVACUATION_STATUS_NOT_INITIATED)
 							dat += "<BR><A href='byond://?src=\ref[src];operation=evacuation_start'>Initiate emergency evacuation</A>"
@@ -393,7 +484,22 @@
 			dat += "Are you sure you want to trigger a distress signal? The signal can be picked up by anyone listening, friendly or not. <A href='byond://?src=\ref[src];operation=distress'>Confirm</A>"
 
 		if(STATE_DESTROY)
-			dat += "Are you sure you want to trigger the self-destruct? This would mean abandoning ship. <A href='byond://?src=\ref[src];operation=destroy'>Confirm</A>"
+			if(SSticker?.mode?.is_in_endgame)
+				dat += "High Command self-destruct requests are unavailable during hijack emergency navigation."
+			else
+				dat += "Are you sure you want to trigger the self-destruct? This would mean abandoning ship. <A href='byond://?src=\ref[src];operation=destroy'>Confirm</A>"
+
+		if(STATE_SELECT_SD_ROUTE)
+			if(SSticker?.mode?.is_in_endgame && SShijack.hijack_status == HIJACK_OBJECTIVES_STARTED && !SShijack.in_ftl && !SShijack.sd_route_selected)
+				dat += "Divert emergency fuel to orbital stabilization and the self-destruct reserve? This will permanently disable FTL. <A href='byond://?src=\ref[src];operation=select_sd_route'>Confirm</A>"
+			else
+				dat += "Emergency fuel can no longer be diverted to the self-destruct system."
+
+		if(STATE_START_COMMAND_SD)
+			if(SSticker?.mode?.is_in_endgame && SShijack.stable_orbit && !SShijack.command_sd_active && !SShijack.sd_detonated)
+				dat += "Stable orbit achieved. Initiate the irreversible self-destruct sequence? <A href='byond://?src=\ref[src];operation=start_command_sd'>Confirm</A>"
+			else
+				dat += "The command self-destruct sequence is unavailable."
 
 		if(STATE_MESSAGELIST)
 			dat += "Messages:"
@@ -501,3 +607,5 @@
 #undef STATE_STATUSDISPLAY
 #undef STATE_ALERT_LEVEL
 #undef STATE_CONFIRM_LEVEL
+#undef STATE_SELECT_SD_ROUTE
+#undef STATE_START_COMMAND_SD

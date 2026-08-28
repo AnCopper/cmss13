@@ -24,6 +24,15 @@ type Data = {
   worldtime: number;
   evac_status: number;
   evac_eta?: string;
+  hijack_active: boolean;
+  hijack_sd_available: boolean;
+  hijack_ftl_active: boolean;
+  sd_route_selected: boolean;
+  stable_orbit: boolean;
+  sd_active: boolean;
+  admin_sd_blocked: boolean;
+  orbit_eta?: string;
+  sd_eta: string;
   messages: { title: string; text: string; number: number }[] | null;
 };
 
@@ -45,7 +54,10 @@ export const AlmayerControl = (_props) => {
     data.time_request < worldTime && AlertLevel === 2 && minimumTimeElapsed;
   const canEvac = evacstatus === 0 && AlertLevel >= 2; // triggering evac
   const canDestruct =
-    data.time_destruct < worldTime && minimumTimeElapsed && AlertLevel === 2;
+    !data.hijack_active &&
+    data.time_destruct < worldTime &&
+    minimumTimeElapsed &&
+    AlertLevel === 2;
   const canCentral = data.time_central < worldTime; // messaging HC
 
   let distress_reason;
@@ -198,31 +210,99 @@ export const AlmayerControl = (_props) => {
                   Evacuation complete.
                 </NoticeBox>
               )}
-              <Flex.Item>
-                {!canDestruct && (
-                  <Button
-                    disabled={1}
-                    tooltip={destruct_reason}
-                    fluid
-                    icon="ban"
-                  >
-                    Self-destruct disabled!
+              {data.sd_active && (
+                <NoticeBox color="bad" danger textAlign="center">
+                  Self-destruct active. Reactor meltdown: {data.sd_eta}.
+                </NoticeBox>
+              )}
+              {data.hijack_sd_available && !data.sd_active && (
+                <Flex.Item>
+                  {data.admin_sd_blocked && (
+                    <Button disabled fluid icon="ban">
+                      Self-destruct locked by ARES
+                    </Button>
+                  )}
+                  {!data.admin_sd_blocked &&
+                    data.sd_route_selected &&
+                    !data.stable_orbit && (
+                      <Button disabled fluid icon="gas-pump">
+                        Fueling Self-destruct; stable orbit ETA:{' '}
+                        {data.orbit_eta}
+                      </Button>
+                    )}
+                  {!data.admin_sd_blocked &&
+                    (!data.sd_route_selected || data.stable_orbit) && (
+                      <Button.Confirm
+                        key={
+                          data.stable_orbit
+                            ? 'start-command-sd'
+                            : 'select-sd-route'
+                        }
+                        fluid
+                        color="red"
+                        icon="explosion"
+                        confirmColor="bad"
+                        confirmContent={
+                          data.stable_orbit
+                            ? 'Begin irreversible sequence?'
+                            : 'Permanently disable FTL?'
+                        }
+                        confirmIcon="question"
+                        onClick={() =>
+                          act(
+                            data.stable_orbit
+                              ? 'start_command_sd'
+                              : 'select_sd_route',
+                          )
+                        }
+                      >
+                        {data.stable_orbit
+                          ? 'Initiate Self-destruct'
+                          : 'Divert fuel to Self-destruct'}
+                      </Button.Confirm>
+                    )}
+                </Flex.Item>
+              )}
+              {data.hijack_ftl_active && (
+                <Button disabled fluid icon="ban">
+                  Self-destruct fuel diversion unavailable; FTL active
+                </Button>
+              )}
+              {data.hijack_active &&
+                !data.hijack_sd_available &&
+                !data.hijack_ftl_active &&
+                !data.sd_active && (
+                  <Button disabled fluid icon="ban">
+                    High Command self-destruct request unavailable
                   </Button>
                 )}
-                {canDestruct && (
-                  <Button.Confirm
-                    fluid
-                    color="red"
-                    icon="explosion"
-                    confirmColor="bad"
-                    confirmContent="Confirm Self-destruct?"
-                    confirmIcon="question"
-                    onClick={() => act('destroy')}
-                  >
-                    Request to initiate Self-destruct
-                  </Button.Confirm>
-                )}
-              </Flex.Item>
+              {!data.hijack_active && !data.sd_active && (
+                <Flex.Item>
+                  {!canDestruct && (
+                    <Button
+                      disabled={1}
+                      tooltip={destruct_reason}
+                      fluid
+                      icon="ban"
+                    >
+                      Self-destruct disabled!
+                    </Button>
+                  )}
+                  {canDestruct && (
+                    <Button.Confirm
+                      fluid
+                      color="red"
+                      icon="explosion"
+                      confirmColor="bad"
+                      confirmContent="Confirm Self-destruct?"
+                      confirmIcon="question"
+                      onClick={() => act('destroy')}
+                    >
+                      Request to initiate Self-destruct
+                    </Button.Confirm>
+                  )}
+                </Flex.Item>
+              )}
               <Flex.Item>
                 {!canRequest && (
                   <Button
