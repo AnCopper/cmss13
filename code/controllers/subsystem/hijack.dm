@@ -71,14 +71,11 @@ SUBSYSTEM_DEF(hijack)
 	/// How long the manual self destruct will take on the high end
 	var/sd_max_time = 15 MINUTES
 
-	/// How long the manual self destruct will take on the low end and the fully fueled command sequence will take
+	/// How long the manual self destruct will take on the low end
 	var/sd_min_time = 5 MINUTES
 
 	/// How much time left until SD detonates
 	var/sd_time_remaining = 0
-
-	/// Whether command has started the pump-fueled self destruct sequence
-	var/command_sd_active = FALSE
 
 	/// Roughly what % of the SD countdown remains
 	var/percent_completion_remaining = 100
@@ -201,7 +198,7 @@ SUBSYSTEM_DEF(hijack)
 
 	if(stable_orbit || hijack_status == HIJACK_OBJECTIVES_FTL_CRASH || hijack_status == HIJACK_OBJECTIVES_GROUND_CRASH)
 		// Stable orbit and crashed states can handle SD without further fuel pump processing
-		if(!sd_detonated && (command_sd_active || (sd_unlocked && overloaded_generators)))
+		if(!sd_detonated && sd_unlocked && overloaded_generators)
 			process_self_destruct()
 
 		if(stable_orbit)
@@ -354,7 +351,11 @@ SUBSYSTEM_DEF(hijack)
 		message += "[cycled_area] - [new_area_state ? "Online" : "Offline"]\n"
 		progress_areas[cycled_area] = new_area_state
 
-	message += "\nCritical damage sustained to ship systems. Altitude rapidly decreasing. Initiating sublight burn to exit AO.\nMaintain fueling functionality to initiate quantum jump to [spaceport.name]. Command may permanently divert emergency fuel to orbital stabilization and the emergency destruct reserve from a communications console."
+	message += "\nCritical damage sustained to ship systems. Altitude rapidly decreasing. Initiating sublight burn to exit AO.\n"
+	if(sd_route_selected)
+		message += "Emergency fuel is being routed to the orbital thrusters and self-destruct reserve. Maintain fueling to achieve stable orbit. FTL capability permanently unavailable."
+	else
+		message += "Maintain fueling functionality to initiate quantum jump to [spaceport.name]. The Commanding Officer may permanently divert emergency fuel from the Groundside Operations Console. Senior command may authorize the diversion with two Keycard Authentication Devices."
 
 	marine_announcement(message, HIJACK_ANNOUNCE)
 
@@ -453,6 +454,12 @@ SUBSYSTEM_DEF(hijack)
 		if(HIJACK_OBJECTIVES_COMPLETE)
 			return "Complete"
 
+/// Passes the orbital stabilization ETA for the command console
+/datum/controller/subsystem/hijack/proc/get_orbit_eta()
+	if(hijack_status == HIJACK_OBJECTIVES_SHIP_INBOUND)
+		return "Awaiting Dropship Impact"
+	return get_evac_eta()
+
 /// Passes the SD ETA for status panels
 /datum/controller/subsystem/hijack/proc/get_sd_eta()
 	if(sd_detonated)
@@ -460,8 +467,8 @@ SUBSYSTEM_DEF(hijack)
 			return "[duration2text_sec(sd_detonation_time - world.time)]"
 		return "Complete"
 
-	if(!command_sd_active && overloaded_generators <= 0)
-		return "Never"
+	if(overloaded_generators <= 0)
+		return sd_unlocked ? "Awaiting Generator Overload" : "Never"
 
 	return "[duration2text_sec(sd_time_remaining)]"
 
@@ -623,9 +630,13 @@ SUBSYSTEM_DEF(hijack)
 
 //~~~~~~~~~~~~~~~~~~~~~~~~ SD STUFF ~~~~~~~~~~~~~~~~~~~~~~~~//
 
+/// Whether command can permanently divert the active hijack fuel route from FTL to self destruct
+/datum/controller/subsystem/hijack/proc/can_select_self_destruct_route()
+	return hijack_status >= HIJACK_OBJECTIVES_SHIP_INBOUND && hijack_status <= HIJACK_OBJECTIVES_STARTED && !in_ftl && !sd_route_selected && !sd_unlocked && !sd_detonated && !admin_sd_blocked
+
 /// Permanently diverts the active hijack fuel route from FTL to stable orbit and self destruct
 /datum/controller/subsystem/hijack/proc/select_self_destruct_route()
-	if(!SSticker?.mode?.is_in_endgame || hijack_status != HIJACK_OBJECTIVES_STARTED || in_ftl || sd_route_selected || sd_unlocked || command_sd_active || sd_detonated || admin_sd_blocked)
+	if(!can_select_self_destruct_route())
 		return FALSE
 
 	sd_route_selected = TRUE
@@ -634,7 +645,7 @@ SUBSYSTEM_DEF(hijack)
 	else
 		estimated_time_left = INFINITY
 
-	shipwide_ai_announcement("Command override accepted. Emergency fuel routing diverted to orbital stabilizers and self-destruct reserves. Quantum jump capability permanently disabled.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
+	shipwide_ai_announcement("Command override accepted. Emergency fuel rerouted to orbital thrusters and self-destruct reserves. The ship will maintain a stable orbit once fueling is complete. FTL capability permanently unavailable.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
 	SEND_GLOBAL_SIGNAL(COMSIG_GLOB_FUEL_PUMP_UPDATE)
 	return TRUE
 
@@ -650,27 +661,25 @@ SUBSYSTEM_DEF(hijack)
 	current_run.Cut()
 	current_run_progress_additive = 0
 	current_run_progress_multiplicative = 1
-	shipwide_ai_announcement("Stable orbit achieved. Self-destruct fuel reserve fully charged. Fuel pumps are no longer required. Command authorization is required to initiate the destruct sequence.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
+	shipwide_ai_announcement("Stable orbit achieved. Self-destruct fuel reserve fully charged. Fuel pumps are no longer required. Command authorization is required to unlock the fusion generator overload controls.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
 	xeno_announcement(SPAN_XENOANNOUNCE("The tallhosts have stabilized their metal hive and fueled its hive killer. Destroying the fueling structures will no longer bring it down. Prevent them from reaching their command center!"), "everything", XENO_HIJACK_ANNOUNCE)
 	return TRUE
 
-/// Starts a fully fueled self destruct from the command console after stable orbit is achieved
-/datum/controller/subsystem/hijack/proc/start_command_self_destruct()
-	if(!SSticker?.mode?.is_in_endgame || hijack_status != HIJACK_OBJECTIVES_STARTED || in_ftl || !stable_orbit || !sd_route_selected || sd_unlocked || command_sd_active || sd_detonated || admin_sd_blocked)
+/// Whether command can unlock the self destruct generator controls after the ship reaches stable orbit
+/datum/controller/subsystem/hijack/proc/can_authorize_command_self_destruct()
+	return SSticker?.mode?.is_in_endgame && hijack_status == HIJACK_OBJECTIVES_STARTED && !in_ftl && stable_orbit && sd_route_selected && !sd_unlocked && !sd_detonated && !admin_sd_blocked
+
+/// Unlocks the self destruct generator controls after stable orbit is achieved
+/datum/controller/subsystem/hijack/proc/authorize_command_self_destruct()
+	if(!can_authorize_command_self_destruct())
 		return FALSE
 
-	command_sd_active = TRUE
-	sd_time_remaining = sd_min_time
-	percent_completion_remaining = 1
-	set_security_level(SEC_LEVEL_DELTA, no_sound = TRUE, announce = FALSE)
-	shipwide_ai_announcement("DANGER: Emergency destruct system activated by Command. Fusion reactor meltdown in five minutes. Evacuate the ship.", "SELF-DESTRUCT SYSTEMS ACTIVE", sound('sound/AI/selfdestruct_short.ogg'))
+	unlock_self_destruct(from_command = TRUE)
 	return TRUE
 
-/// Advances either the manual generator overload or command-initiated self destruct countdown
+/// Advances the manual generator overload countdown
 /datum/controller/subsystem/hijack/proc/process_self_destruct()
-	var/sd_required_time = sd_min_time
-	if(!command_sd_active)
-		sd_required_time = max((1 - round(overloaded_generators / maximum_overload_generators, 0.01)) * sd_max_time, sd_min_time)
+	var/sd_required_time = max((1 - round(overloaded_generators / maximum_overload_generators, 0.01)) * sd_max_time, sd_min_time)
 
 	sd_time_remaining -= wait
 	if(!engine_room_heated && sd_time_remaining <= sd_required_time * 0.66)
@@ -685,10 +694,13 @@ SUBSYSTEM_DEF(hijack)
 	if(sd_time_remaining <= 0)
 		detonate_sd()
 
-/// After a crash, marines can optionally hold SD for a time for a stalemate instead of a xeno minor
-/datum/controller/subsystem/hijack/proc/unlock_self_destruct(from_ftl = FALSE)
+/// After a crash or command authorization, marines can optionally hold SD for a time for a stalemate instead of a xeno minor
+/datum/controller/subsystem/hijack/proc/unlock_self_destruct(from_ftl = FALSE, from_command = FALSE)
 	sd_time_remaining = sd_max_time
 	sd_unlocked = TRUE
+	if(from_command)
+		shipwide_ai_announcement("DANGER, THE EMERGENCY DESTRUCT SYSTEM IS NOW ACTIVATED. PROCEED TO THE SELF-DESTRUCT CHAMBER TO OVERLOAD THE GENERATORS.", "SELF-DESTRUCT SYSTEMS ACTIVE", sound('sound/AI/selfdestruct_short.ogg'))
+		return
 	shipwide_ai_announcement("[from_ftl ? "Hyperdrive tachyon shunt no longer operable. Lifeboats and pods re-enabled. " : ""]Remaining fuel transferred to on board fusion generators to permit scuttling.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
 
 /// Signal handler for COMSIG_GLOB_GENERATOR_SET_OVERLOADING
@@ -771,6 +783,102 @@ SUBSYSTEM_DEF(hijack)
 	ares_sd_announced = TRUE
 	shipwide_ai_announcement("ALERT: Fusion reactor meltdown has reached fifty percent.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
 
+/// Enables power-independent emergency lighting for the final countdown
+/datum/controller/subsystem/hijack/proc/start_sd_emergency_lighting()
+	for(var/area/ship_area as anything in GLOB.ship_areas)
+		if(istype(ship_area, /area/space))
+			continue
+
+		ship_area.set_base_lighting(new_base_lighting_color = LIGHT_COLOR_RED, new_alpha = 105)
+		for(var/obj/structure/machinery/light/ship_light in ship_area)
+			ship_light.needs_power = FALSE
+			ship_light.brightness = min(ship_light.brightness, 4)
+			ship_light.light_color = LIGHT_COLOR_RED
+			ship_light.on = TRUE
+			ship_light.update(FALSE)
+			ship_light.set_light(ship_light.on ? ship_light.brightness : 0, l_color = LIGHT_COLOR_RED)
+
+/// Randomly releases smoke from vents and scrubbers during the final countdown
+/datum/controller/subsystem/hijack/proc/spew_sd_smoke(detonation_time)
+	var/list/obj/structure/pipes/vents/ship_vents = list()
+	for(var/obj/structure/pipes/vents/vent in GLOB.mainship_pipes)
+		if(QDELETED(vent) || vent.welded)
+			continue
+		var/turf/vent_turf = get_turf(vent)
+		if(!vent_turf || !is_mainship_level(vent_turf.z))
+			continue
+
+		ship_vents += vent
+
+	while(length(ship_vents) && world.time < detonation_time)
+		var/smoke_delay = rand(3 SECONDS, 6 SECONDS)
+		if(world.time + smoke_delay >= detonation_time)
+			return
+		sleep(smoke_delay)
+		if(world.time >= detonation_time)
+			return
+
+		var/list/available_vents = ship_vents.Copy()
+		var/smoke_bursts = world.time >= detonation_time - 1 MINUTES ? rand(2, 3) : rand(1, 2)
+		smoke_bursts = min(smoke_bursts, length(available_vents))
+		for(var/i in 1 to smoke_bursts)
+			var/obj/structure/pipes/vents/vent = pick_n_take(available_vents)
+			if(QDELETED(vent) || vent.welded)
+				ship_vents -= vent
+				continue
+			var/turf/vent_turf = get_turf(vent)
+			if(!vent_turf || !is_mainship_level(vent_turf.z))
+				ship_vents -= vent
+				continue
+
+			var/datum/effect_system/smoke_spread/smoke = new()
+			smoke.set_up(1, 0, vent_turf, null, 6)
+			smoke.start()
+			playsound(vent_turf, 'sound/effects/smoke.ogg', 25, TRUE, 4)
+			vent.visible_message(SPAN_WARNING("[vent] suddenly spews smoke!"), SPAN_WARNING("You hear pressurized gas hissing."), 5)
+
+/// Spreads fire from the fusion generators during the final minute, then makes them repeatedly erupt during the final five seconds
+/datum/controller/subsystem/hijack/proc/overload_sd_generators(detonation_time)
+	var/fire_delay = detonation_time - world.time - 1 MINUTES
+	if(fire_delay > 0)
+		sleep(fire_delay)
+	if(world.time >= detonation_time)
+		return
+
+	var/list/obj/structure/machinery/power/power_generator/reactor/generators = list()
+	var/datum/cause_data/meltdown_cause = create_cause_data("fusion reactor meltdown")
+	for(var/obj/structure/machinery/power/power_generator/reactor/generator in GLOB.machines)
+		if(!generator.is_ship_reactor || QDELETED(generator))
+			continue
+		var/turf/generator_turf = get_turf(generator)
+		if(!generator_turf)
+			continue
+
+		generators += generator
+		INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(flame_radius), meltdown_cause, 2, generator_turf, BURN_TIME_TIER_5 + 10, BURN_LEVEL_TIER_3, FLAMESHAPE_DEFAULT, null)
+
+	var/explosion_delay = detonation_time - world.time - 5 SECONDS
+	if(explosion_delay > 0)
+		sleep(explosion_delay)
+
+	var/list/obj/structure/machinery/power/power_generator/reactor/available_generators = generators.Copy()
+	while(length(generators) && world.time < detonation_time)
+		if(!length(available_generators))
+			available_generators = generators.Copy()
+		var/obj/structure/machinery/power/power_generator/reactor/generator = pick_n_take(available_generators)
+		if(QDELETED(generator))
+			generators -= generator
+			continue
+		var/turf/generator_turf = get_turf(generator)
+		if(!generator_turf)
+			generators -= generator
+			continue
+
+		INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(cell_explosion), generator_turf, 300, 100, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, meltdown_cause)
+		var/next_explosion_delay = min(2, detonation_time - world.time)
+		if(next_explosion_delay > 0)
+			sleep(next_explosion_delay)
+
 /// Shakes the ship with increasing intensity throughout the final self destruct countdown
 /datum/controller/subsystem/hijack/proc/shake_sd_grace_period(detonation_time)
 	while(world.time < detonation_time)
@@ -802,10 +910,13 @@ SUBSYSTEM_DEF(hijack)
 	SSticker?.roundend_check_paused = TRUE
 	sd_detonated = TRUE
 	sd_detonation_time = world.time + 2 MINUTES
+	start_sd_emergency_lighting()
 	critically_heat_engine_room()
 	shipwide_ai_announcement("ALERT: Fusion reactor meltdown is irreversible. Emergency detonation in two minutes. Evacuate immediately.", HIJACK_ANNOUNCE, sound('sound/AI/selfdestruct_2m.ogg'))
 	INVOKE_ASYNC(src, PROC_REF(shake_sd_grace_period), sd_detonation_time)
 	INVOKE_ASYNC(src, PROC_REF(announce_sd_grace_period))
+	INVOKE_ASYNC(src, PROC_REF(spew_sd_smoke), sd_detonation_time)
+	INVOKE_ASYNC(src, PROC_REF(overload_sd_generators), sd_detonation_time)
 	// The existing detonation sequence lasts 27 seconds, so begin it within the two minute grace period.
 	sleep(93 SECONDS)
 
@@ -815,16 +926,11 @@ SUBSYSTEM_DEF(hijack)
 		if(!current_turf || !current_mob.client || !is_mainship_level(current_turf.z))
 			continue
 
-		to_chat(current_mob, SPAN_BOLDWARNING("The ship's deck worryingly creaks underneath you."))
 		playsound_client(current_mob.client, creak_picked, vol=50)
 
 	sleep(7 SECONDS)
 	shipwide_ai_announcement("ALERT: Fusion reactors dangerously overloaded. Runaway meltdown in reactor core imminent.", HIJACK_ANNOUNCE, sound('sound/misc/notice2.ogg'))
 	sleep(5 SECONDS)
-
-	var/sound_picked = pick('sound/theme/nuclear_detonation1.ogg','sound/theme/nuclear_detonation2.ogg')
-	for(var/client/player as anything in GLOB.clients)
-		playsound_client(player, sound_picked, vol=90)
 
 	var/list/alive_mobs = list() //Everyone who will be destroyed on the zlevel(s).
 	var/list/dead_mobs = list() //Everyone who only needs to see the cinematic.

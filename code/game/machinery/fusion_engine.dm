@@ -440,6 +440,8 @@
 
 /obj/structure/machinery/power/power_generator/reactor/ex_act(severity)
 	. = FALSE
+	if(is_ship_reactor && SShijack.sd_detonated)
+		return
 	if(severity <= EXPLOSION_THRESHOLD_MLOW)
 		return
 

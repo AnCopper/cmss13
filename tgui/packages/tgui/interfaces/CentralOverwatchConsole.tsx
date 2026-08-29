@@ -77,6 +77,17 @@ type Data = {
   world_time: number;
   distress_time_lock: number;
   time_request: number;
+  hijack_active: BooleanLike;
+  hijack_sd_available: BooleanLike;
+  hijack_ftl_active: BooleanLike;
+  can_authorize_sd_alone: BooleanLike;
+  sd_route_selected: BooleanLike;
+  stable_orbit: BooleanLike;
+  sd_unlocked: BooleanLike;
+  sd_active: BooleanLike;
+  admin_sd_blocked: BooleanLike;
+  orbit_eta?: string;
+  sd_eta: string;
   ob_warhead: string;
   echo_squad_active: Boolean;
 };
@@ -746,6 +757,15 @@ const EmergencyPanel = (props) => {
   const AlertLevel = data.alert_level;
   const evacstatus = data.evac_status;
   const world_time = data.world_time;
+  const hijackActive = !!data.hijack_active;
+  const hijackSdAvailable = !!data.hijack_sd_available;
+  const hijackFtlActive = !!data.hijack_ftl_active;
+  const canAuthorizeSdAlone = !!data.can_authorize_sd_alone;
+  const sdRouteSelected = !!data.sd_route_selected;
+  const stableOrbit = !!data.stable_orbit;
+  const sdUnlocked = !!data.sd_unlocked;
+  const sdActive = !!data.sd_active;
+  const adminSdBlocked = !!data.admin_sd_blocked;
 
   let emergencylockout;
   if (AlertLevel >= 2) {
@@ -841,15 +861,153 @@ const EmergencyPanel = (props) => {
               </ButtonConfirm>
             </Stack.Item>
             <Stack.Item>
-              <Button
-                inline
-                width="100%"
-                icon="ban"
-                mt="1px"
-                color="transperant"
-              >
-                SELF-DESTRUCT DISABLED
-              </Button>
+              {sdActive && (
+                <Button
+                  disabled
+                  inline
+                  width="100%"
+                  icon="explosion"
+                  mt="1px"
+                  color="red"
+                >
+                  SELF-DESTRUCT ACTIVE - {data.sd_eta}
+                </Button>
+              )}
+              {hijackSdAvailable && !sdActive && (
+                <>
+                  {adminSdBlocked && (
+                    <Button
+                      disabled
+                      inline
+                      width="100%"
+                      icon="ban"
+                      mt="1px"
+                      color="transperant"
+                    >
+                      SELF-DESTRUCT LOCKED BY ARES
+                    </Button>
+                  )}
+                  {!adminSdBlocked && (
+                    <>
+                      {sdUnlocked && (
+                        <Button
+                          disabled
+                          inline
+                          width="100%"
+                          icon="tools"
+                          mt="1px"
+                          color="red"
+                        >
+                          REACTOR OVERLOAD AUTHORIZED - MANUALLY OVERLOAD THE
+                          GENERATORS
+                        </Button>
+                      )}
+                      {!sdUnlocked && (
+                        <>
+                          {sdRouteSelected && !stableOrbit && (
+                            <Button
+                              disabled
+                              inline
+                              width="100%"
+                              icon="gas-pump"
+                              mt="1px"
+                              color="red"
+                            >
+                              SELF-DESTRUCT FUELING - STABLE ORBIT ETA:{' '}
+                              {data.orbit_eta}
+                            </Button>
+                          )}
+                          {(!sdRouteSelected || stableOrbit) &&
+                            canAuthorizeSdAlone && (
+                              <Button.Confirm
+                                key={
+                                  stableOrbit
+                                    ? 'authorize-command-sd'
+                                    : 'select-sd-route'
+                                }
+                                inline
+                                width="100%"
+                                icon="explosion"
+                                mt="1px"
+                                color="red"
+                                confirmColor="bad"
+                                confirmContent={
+                                  stableOrbit
+                                    ? 'Unlock generator overload controls?'
+                                    : 'Reroute fuel? FTL will be permanently disabled.'
+                                }
+                                confirmIcon="question"
+                                onClick={() =>
+                                  act(
+                                    stableOrbit
+                                      ? 'authorize_command_sd'
+                                      : 'select_sd_route',
+                                  )
+                                }
+                              >
+                                {stableOrbit
+                                  ? 'AUTHORIZE REACTOR OVERLOAD'
+                                  : 'DIVERT FUEL TO SELF-DESTRUCT'}
+                              </Button.Confirm>
+                            )}
+                          {(!sdRouteSelected || stableOrbit) &&
+                            !canAuthorizeSdAlone && (
+                              <Button
+                                disabled
+                                inline
+                                width="100%"
+                                icon="id-card"
+                                mt="1px"
+                                color="transperant"
+                              >
+                                TWO-PERSON KEYCARD AUTHORIZATION REQUIRED
+                              </Button>
+                            )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+              {hijackFtlActive && (
+                <Button
+                  disabled
+                  inline
+                  width="100%"
+                  icon="ban"
+                  mt="1px"
+                  color="transperant"
+                >
+                  SELF-DESTRUCT UNAVAILABLE - FTL ACTIVE
+                </Button>
+              )}
+              {hijackActive &&
+                !hijackSdAvailable &&
+                !hijackFtlActive &&
+                !sdActive && (
+                  <Button
+                    disabled
+                    inline
+                    width="100%"
+                    icon="ban"
+                    mt="1px"
+                    color="transperant"
+                  >
+                    SELF-DESTRUCT UNAVAILABLE
+                  </Button>
+                )}
+              {!hijackActive && !sdActive && (
+                <Button
+                  disabled
+                  inline
+                  width="100%"
+                  icon="ban"
+                  mt="1px"
+                  color="transperant"
+                >
+                  SELF-DESTRUCT DISABLED
+                </Button>
+              )}
             </Stack.Item>
             <Stack.Item>
               {!canRequest && (

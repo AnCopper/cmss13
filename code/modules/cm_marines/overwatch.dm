@@ -80,6 +80,27 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 	show_command_squad = TRUE
 	tgui_interaction_distance = 3
 
+/obj/structure/machinery/computer/overwatch/groundside_operations/proc/verify_commanding_officer_self_destruct_authorization(mob/user)
+	if(!allowed(user))
+		to_chat(user, SPAN_WARNING("Console access denied."))
+		return FALSE
+	if(!ishuman(user))
+		to_chat(user, SPAN_WARNING("Biometric authorization requires a human operator."))
+		return FALSE
+
+	var/mob/living/carbon/human/human_user = user
+	if(human_user.job != JOB_CO)
+		to_chat(user, SPAN_WARNING("Only the Commanding Officer can authorize self-destruct alone from this console."))
+		return FALSE
+
+	var/obj/item/card/id/idcard = human_user.get_active_hand()
+	if(!istype(idcard))
+		idcard = human_user.get_idcard()
+	if(!istype(idcard) || !(ACCESS_MARINE_SENIOR in idcard.access) || idcard.registered_ref?.resolve() != human_user || !idcard.check_biometrics(human_user))
+		to_chat(user, SPAN_WARNING("Biometrics failure! Your Commanding Officer ID is required to authorize this action."))
+		return FALSE
+	return TRUE
+
 /obj/structure/machinery/computer/overwatch/Initialize()
 	. = ..()
 	if(faction == FACTION_MARINE)
@@ -600,6 +621,17 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 	data["alert_level"] = GLOB.security_level
 	data["evac_status"] = SShijack.evac_status
 	data["world_time"] = world.time
+	data["hijack_active"] = SShijack.hijack_status >= HIJACK_OBJECTIVES_SHIP_INBOUND
+	data["hijack_sd_available"] = SShijack.hijack_status >= HIJACK_OBJECTIVES_SHIP_INBOUND && SShijack.hijack_status <= HIJACK_OBJECTIVES_STARTED && !SShijack.in_ftl
+	data["hijack_ftl_active"] = SShijack.hijack_status >= HIJACK_OBJECTIVES_SHIP_INBOUND && SShijack.hijack_status <= HIJACK_OBJECTIVES_STARTED && SShijack.in_ftl
+	data["can_authorize_sd_alone"] = ishuman(user) && user.job == JOB_CO
+	data["sd_route_selected"] = SShijack.sd_route_selected
+	data["stable_orbit"] = SShijack.stable_orbit
+	data["sd_unlocked"] = SShijack.sd_unlocked
+	data["sd_active"] = SShijack.sd_detonated || (SShijack.sd_unlocked && SShijack.overloaded_generators)
+	data["admin_sd_blocked"] = SShijack.admin_sd_blocked
+	data["orbit_eta"] = SShijack.get_orbit_eta()
+	data["sd_eta"] = SShijack.get_sd_eta()
 
 	data["time_request"] = cooldown_request
 
@@ -1108,6 +1140,47 @@ GLOBAL_LIST_EMPTY_TYPED(active_overwatch_consoles, /obj/structure/machinery/comp
 			message_admins("[key_name_admin(user)] has called for general quarters via the groundside operations console.")
 			log_ares_security("General Quarters", "Called for general quarters via the groundside operations console.", user)
 			. = TRUE
+
+/obj/structure/machinery/computer/overwatch/groundside_operations/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+	. = ..()
+	if(.)
+		return
+
+	var/mob/user = ui.user
+	switch(action)
+		if("select_sd_route")
+			if(!verify_commanding_officer_self_destruct_authorization(user))
+				return FALSE
+			if(SShijack.admin_sd_blocked)
+				to_chat(user, SPAN_WARNING("ARES has locked the self-destruct system."))
+				return FALSE
+			if(SShijack.sd_route_selected || !SShijack.select_self_destruct_route())
+				to_chat(user, SPAN_WARNING("Emergency fuel can no longer be diverted to the self-destruct system."))
+				return FALSE
+
+			to_chat(user, SPAN_NOTICE("Emergency fuel rerouted to the orbital thrusters and self-destruct reserve. The ship will maintain stable orbit once fueling is complete. FTL is permanently unavailable."))
+			log_game("[key_name(user)] diverted emergency fuel to the self-destruct system.")
+			message_admins("[key_name_admin(user)] diverted emergency fuel to the self-destruct system.")
+			log_ares_security("Self-Destruct Fuel Diversion", "Rerouted emergency fuel to the orbital thrusters and self-destruct reserve.", user)
+			return TRUE
+
+		if("authorize_command_sd")
+			if(!verify_commanding_officer_self_destruct_authorization(user))
+				return FALSE
+			if(SShijack.admin_sd_blocked)
+				to_chat(user, SPAN_WARNING("ARES has locked the self-destruct system."))
+				return FALSE
+			if(SShijack.sd_unlocked || SShijack.sd_detonated)
+				to_chat(user, SPAN_WARNING("The [MAIN_SHIP_NAME]'s reactor overload controls are already unlocked."))
+				return FALSE
+			if(!SShijack.stable_orbit || !SShijack.authorize_command_self_destruct())
+				to_chat(user, SPAN_WARNING("The self-destruct system rejects the command. Stable orbit may not have been achieved."))
+				return FALSE
+
+			log_game("[key_name(user)] authorized the self-destruct reactor overload controls after achieving stable orbit.")
+			message_admins("[key_name_admin(user)] authorized the self-destruct reactor overload controls after achieving stable orbit.")
+			log_ares_security("Self-Destruct Authorization", "Unlocked the reactor overload controls after achieving stable orbit.", user)
+			return TRUE
 
 /obj/structure/machinery/computer/overwatch/proc/transfer_talk(obj/item/camera, mob/living/sourcemob, message, verb = "says", datum/language/language, italics = FALSE, show_message_above_tv = FALSE)
 	SIGNAL_HANDLER

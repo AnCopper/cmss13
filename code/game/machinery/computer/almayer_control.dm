@@ -31,28 +31,11 @@
 		to_chat(usr, SPAN_WARNING("Access denied."))
 		return FALSE
 
-	if(!istype(loc.loc, /area/almayer/command/cic) && !istype(loc.loc, /area/almayer/command/cicconference)) //Has to be in the CIC.
+	if(!istype(loc.loc, /area/almayer/command/cic)) //Has to be in the CIC. Can also be a generic CIC area to communicate, if wanted.
 		to_chat(usr, SPAN_WARNING("Unable to establish a connection."))
 		return FALSE
 
 	tgui_interact(user)
-
-/obj/structure/machinery/computer/almayer_control/proc/verify_self_destruct_authorization(mob/user)
-	if(!allowed(user))
-		to_chat(user, SPAN_WARNING("You are not authorized to access the self-destruct controls."))
-		return FALSE
-	if(!ishuman(user))
-		to_chat(user, SPAN_WARNING("Biometric authorization requires a human operator."))
-		return FALSE
-
-	var/mob/living/carbon/human/human_user = user
-	var/obj/item/card/id/idcard = human_user?.get_active_hand()
-	if(!istype(idcard))
-		idcard = human_user?.get_idcard()
-	if(!istype(idcard) || !(ACCESS_MARINE_SENIOR in idcard.access) || !idcard.check_biometrics(human_user))
-		to_chat(user, SPAN_WARNING("Biometrics failure! A senior command ID registered to you is required to authorize this action."))
-		return FALSE
-	return TRUE
 
 // tgui boilerplate \\
 
@@ -101,15 +84,6 @@
 	data["evac_status"] = SShijack.evac_status
 	if(SShijack.evac_status == EVACUATION_STATUS_INITIATED)
 		data["evac_eta"] = SShijack.get_evac_eta()
-	data["hijack_active"] = SSticker?.mode?.is_in_endgame
-	data["hijack_sd_available"] = SSticker?.mode?.is_in_endgame && SShijack.hijack_status == HIJACK_OBJECTIVES_STARTED && !SShijack.in_ftl
-	data["hijack_ftl_active"] = SSticker?.mode?.is_in_endgame && SShijack.hijack_status == HIJACK_OBJECTIVES_STARTED && SShijack.in_ftl
-	data["sd_route_selected"] = SShijack.sd_route_selected
-	data["stable_orbit"] = SShijack.stable_orbit
-	data["sd_active"] = SShijack.command_sd_active || SShijack.sd_detonated || (SShijack.sd_unlocked && SShijack.overloaded_generators)
-	data["admin_sd_blocked"] = SShijack.admin_sd_blocked
-	data["orbit_eta"] = SShijack.get_evac_eta()
-	data["sd_eta"] = SShijack.get_sd_eta()
 
 	if(!length(messagetitle))
 		data["messages"] = null
@@ -289,45 +263,7 @@
 
 	// sd \\
 
-		if("select_sd_route")
-			if(!verify_self_destruct_authorization(user))
-				return FALSE
-			if(SShijack.admin_sd_blocked)
-				to_chat(user, SPAN_WARNING("ARES has locked the self-destruct system."))
-				return FALSE
-			if(SShijack.sd_route_selected || !SShijack.select_self_destruct_route())
-				to_chat(user, SPAN_WARNING("Emergency fuel can no longer be diverted to the self-destruct system."))
-				return FALSE
-
-			to_chat(user, SPAN_NOTICE("Emergency fuel diverted to orbital stabilization and the self-destruct reserve. FTL has been permanently disabled."))
-			log_game("[key_name(user)] diverted emergency fuel to the self-destruct system, permanently disabling FTL.")
-			message_admins("[key_name_admin(user)] diverted emergency fuel to the self-destruct system, permanently disabling FTL.")
-			log_ares_security("Self-Destruct Fuel Diversion", "Diverted emergency fuel to orbital stabilization and the self-destruct reserve.", user)
-			return TRUE
-
-		if("start_command_sd")
-			if(!verify_self_destruct_authorization(user))
-				return FALSE
-			if(SShijack.admin_sd_blocked)
-				to_chat(user, SPAN_WARNING("ARES has locked the self-destruct system."))
-				return FALSE
-			if(SShijack.command_sd_active || SShijack.sd_detonated)
-				to_chat(user, SPAN_WARNING("The [MAIN_SHIP_NAME]'s self-destruct is already active."))
-				return FALSE
-			if(!SShijack.stable_orbit || !SShijack.start_command_self_destruct())
-				to_chat(user, SPAN_WARNING("The self-destruct system rejects the command. Stable orbit may not have been achieved."))
-				return FALSE
-
-			log_game("[key_name(user)] initiated the command self-destruct sequence after achieving stable orbit.")
-			message_admins("[key_name_admin(user)] initiated the command self-destruct sequence after achieving stable orbit.")
-			log_ares_security("Command Self-Destruct", "Initiated the self-destruct sequence after achieving stable orbit.", user)
-			return TRUE
-
 		if("destroy")
-			if(SSticker?.mode?.is_in_endgame)
-				to_chat(user, SPAN_WARNING("High Command self-destruct requests are unavailable during hijack emergency navigation."))
-				return FALSE
-
 			if(world.time < DISTRESS_TIME_LOCK)
 				to_chat(user, SPAN_WARNING("The self-destruct cannot be activated this early in the operation. Please wait another [time_left_until(DISTRESS_TIME_LOCK, world.time, 1 MINUTES)] minutes before trying again."))
 				return FALSE
