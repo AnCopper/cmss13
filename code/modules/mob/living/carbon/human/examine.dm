@@ -107,7 +107,7 @@
 	if(ishuman_strict(src))
 		var/age_description
 		switch(clamp(age, AGE_MIN, AGE_MAX))
-			if(-INFINITY to 25)
+			if(AGE_MIN to 25)
 				age_description = "very young"
 			if(26 to 35)
 				age_description = "young"
@@ -115,7 +115,7 @@
 				age_description = "middle-aged"
 			if(56 to 75)
 				age_description = "older"
-			if(76 to INFINITY)
+			if(76 to AGE_MAX)
 				age_description = "elderly"
 
 		var/body_size_description
